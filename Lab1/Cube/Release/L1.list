@@ -150,7 +150,7 @@ Disassembly of section .text:
  8000220:	f001 f9f2 	bl	8001608 <memset>
  8000224:	f641 783f 	movw	r8, #7999	; 0x1f3f
  8000228:	f04f 4380 	mov.w	r3, #1073741824	; 0x40000000
- 800022c:	f240 37e7 	movw	r7, #999	; 0x3e7
+ 800022c:	f240 47e1 	movw	r7, #1249	; 0x4e1
  8000230:	4e4b      	ldr	r6, [pc, #300]	; (8000360 <main+0x1c4>)
  8000232:	e9cd 4407 	strd	r4, r4, [sp, #28]
  8000236:	4630      	mov	r0, r6
@@ -195,7 +195,7 @@ Disassembly of section .text:
  800029e:	4b32      	ldr	r3, [pc, #200]	; (8000368 <main+0x1cc>)
  80002a0:	4620      	mov	r0, r4
  80002a2:	e9c4 3800 	strd	r3, r8, [r4]
- 80002a6:	f240 73cf 	movw	r3, #1999	; 0x7cf
+ 80002a6:	f640 13c3 	movw	r3, #2499	; 0x9c3
  80002aa:	e9c4 3503 	strd	r3, r5, [r4, #12]
  80002ae:	2380      	movs	r3, #128	; 0x80
  80002b0:	60a5      	str	r5, [r4, #8]
