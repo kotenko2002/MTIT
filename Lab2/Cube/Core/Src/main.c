@@ -312,13 +312,17 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+#define IS_PRINTABLE_ASCII(c) ((c) >= 32 && (c) <= 126)
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if (huart->Instance == USART2) {
     if (uart2_rx_data != '\r') {
-      if (uart2_rx_data >= 32 && uart2_rx_data <= 126) {
+      if (IS_PRINTABLE_ASCII(uart2_rx_data)) {
+    	// Add the received data to the RX buffer
         uart2_rx_buffer[uart2_rx_index++] = uart2_rx_data;
 
+        // If the RX buffer is full, reset the index to the beginning
         if (uart2_rx_index >= UART_RX_BUFFER_SIZE - 1) {
           uart2_rx_index = 0;
         }
@@ -334,22 +338,28 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void processCommand(char* command) {
     if (strcmp(command, "LED ON") == 0) {
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
-        sendResponse("LED is ON\r\n");
+        setLedState(GPIO_PIN_SET, "LED is ON\r\n");
     } else if (strcmp(command, "LED OFF") == 0) {
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
-        sendResponse("LED is OFF\r\n");
+        setLedState(GPIO_PIN_RESET, "LED is OFF\r\n");
     } else {
-        char response[50];
-        snprintf(response, sizeof(response), "Unknown command: %s\r\n", command);
-        sendResponse(response);
+        sendUnknownCommandResponse(command);
     }
+}
+
+void setLedState(uint16_t state, char* response) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, state);
+    sendResponse(response);
+}
+
+void sendUnknownCommandResponse(char* command) {
+    char response[50];
+    snprintf(response, sizeof(response), "Unknown command: %s\r\n", command);
+    sendResponse(response);
 }
 
 void sendResponse(char* response) {
     HAL_UART_Transmit(&huart1, (uint8_t*)response, strlen(response), HAL_MAX_DELAY);
 }
-
 /* USER CODE END 4 */
 
 /**
