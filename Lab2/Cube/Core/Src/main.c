@@ -43,9 +43,15 @@
 ADC_HandleTypeDef hadc1;
 
 UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+#define UART_RX_BUFFER_SIZE 50
 
+char uart2_rx_buffer[UART_RX_BUFFER_SIZE];
+uint8_t uart2_rx_index = 0;
+char uart1_tx_buffer[50];
+uint8_t uart2_rx_data;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -53,13 +59,20 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint32_t read_adc_value() {
+    HAL_ADC_Start(&hadc1);
+    HAL_ADC_PollForConversion(&hadc1, 200);
+    uint32_t value = HAL_ADC_GetValue(&hadc1);
+    HAL_ADC_Stop(&hadc1);
+    return value;
+}
 /* USER CODE END 0 */
 
 /**
@@ -92,6 +105,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_ADC1_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   char text[250];
   sprintf(text, "Hello %d \r\n", 10);
@@ -99,13 +113,10 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  HAL_UART_Receive_IT(&huart2, &uart2_rx_data, 1);
   while (1)
   {
-	  HAL_ADC_Start(&hadc1);
-	  HAL_ADC_PollForConversion(&hadc1, 200);
-	  uint32_t value = HAL_ADC_GetValue(&hadc1);
-	  HAL_ADC_Stop(&hadc1);
-
+	  uint32_t value = read_adc_value();
 	  sprintf(text, "ADC value: %d \r\n", value);
 	  HAL_UART_Transmit_IT(&huart1, (uint8_t*)text, strlen(text));
 	  HAL_Delay(1000);
@@ -240,23 +251,104 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 9600;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
+
+  /*Configure GPIO pin : PA1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART2) {
+    if (uart2_rx_data != '\r') {
+      if (uart2_rx_data >= 32 && uart2_rx_data <= 126) {
+        uart2_rx_buffer[uart2_rx_index++] = uart2_rx_data;
+
+        if (uart2_rx_index >= UART_RX_BUFFER_SIZE - 1) {
+          uart2_rx_index = 0;
+        }
+      }
+    } else {
+      uart2_rx_buffer[uart2_rx_index] = '\0';
+      processCommand(uart2_rx_buffer);
+      uart2_rx_index = 0;
+    }
+    HAL_UART_Receive_IT(&huart2, &uart2_rx_data, 1);
+  }
+}
+
+void processCommand(char* command) {
+    if (strcmp(command, "LED ON") == 0) {
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
+        sendResponse("LED is ON\r\n");
+    } else if (strcmp(command, "LED OFF") == 0) {
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
+        sendResponse("LED is OFF\r\n");
+    } else {
+        char response[50];
+        snprintf(response, sizeof(response), "Unknown command: %s\r\n", command);
+        sendResponse(response);
+    }
+}
+
+void sendResponse(char* response) {
+    HAL_UART_Transmit(&huart1, (uint8_t*)response, strlen(response), HAL_MAX_DELAY);
+}
 
 /* USER CODE END 4 */
 
